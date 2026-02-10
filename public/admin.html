@@ -1,110 +1,49 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
+<meta charset="UTF-8">
 <title>LakshDrops Admin</title>
 
 <style>
-  * {
-    box-sizing: border-box;
-    font-family: system-ui, -apple-system, BlinkMacSystemFont;
-  }
-
-  body {
-    margin: 0;
-    min-height: 100vh;
-    background: #0b0f1a;
-    color: #e5e7eb;
-    padding: 30px;
-  }
-
-  h1 {
-    margin-bottom: 10px;
-  }
-
-  .login, .panel {
-    max-width: 900px;
-    margin: auto;
-  }
-
-  input {
-    padding: 10px;
-    border-radius: 8px;
-    border: 1px solid #333;
-    background: #020617;
-    color: white;
-    margin-right: 10px;
-  }
-
-  button {
-    padding: 10px 14px;
-    border-radius: 8px;
-    border: none;
-    cursor: pointer;
-    font-weight: 600;
-  }
-
-  .login button {
-    background: #3b82f6;
-    color: white;
-  }
-
-  .danger {
-    background: #ef4444;
-    color: white;
-  }
-
-  .success {
-    background: #22c55e;
-    color: white;
-  }
-
-  .top-bar {
-    display: flex;
-    justify-content: space-between;
-    margin-bottom: 15px;
-  }
-
-  table {
-    width: 100%;
-    border-collapse: collapse;
-    margin-top: 10px;
-  }
-
-  th, td {
-    padding: 12px;
-    border-bottom: 1px solid #1f2937;
-    text-align: left;
-    font-size: 14px;
-  }
-
-  th {
-    color: #93c5fd;
-  }
-
-  tr:hover {
-    background: #020617;
-  }
-
-  small {
-    color: #9ca3af;
-  }
+body {
+  background: #0b0f1a;
+  color: white;
+  font-family: system-ui;
+  padding: 30px;
+}
+input, button {
+  padding: 10px;
+  border-radius: 6px;
+  border: none;
+}
+button { cursor: pointer; }
+.danger { background: #ef4444; color: white; }
+.success { background: #22c55e; color: white; }
+.login, .panel { max-width: 900px; margin: auto; }
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 20px;
+}
+th, td {
+  border-bottom: 1px solid #333;
+  padding: 10px;
+  text-align: left;
+}
 </style>
 </head>
 
 <body>
 
 <div class="login" id="login">
-  <h1>🔐 Admin Login</h1>
-  <input id="adminKey" placeholder="Enter admin key">
+  <h2>🔐 Admin Login</h2>
+  <input id="adminKey" type="password" placeholder="Admin key">
   <button onclick="login()">Login</button>
 </div>
 
 <div class="panel" id="panel" style="display:none">
-  <div class="top-bar">
-    <h1>⚙️ Admin Dashboard</h1>
-    <input id="search" placeholder="Search files..." oninput="render()">
-  </div>
+  <h2>⚙️ Admin Dashboard</h2>
+  <button class="danger" onclick="logout()">Logout</button>
 
   <table>
     <thead>
@@ -120,90 +59,81 @@
 </div>
 
 <script>
-  const loginBox = document.getElementById("login");
-  const panel = document.getElementById("panel");
-  const table = document.getElementById("table");
-  const search = document.getElementById("search");
+let ADMIN_KEY = "";
+let files = [];
 
-  let ADMIN_KEY = "";
-  let files = [];
-
-  function login() {
-    ADMIN_KEY = document.getElementById("adminKey").value;
-    if (!ADMIN_KEY) return alert("Admin key required");
-    sessionStorage.setItem("ADMIN_KEY", ADMIN_KEY);
-    load();
-  }
-
-  async function load() {
-    ADMIN_KEY = sessionStorage.getItem("ADMIN_KEY");
-    if (!ADMIN_KEY) return;
-
-    loginBox.style.display = "none";
-    panel.style.display = "block";
-
-    const res = await fetch("/files");
-    files = await res.json();
-    render();
-  }
-
-  function render() {
-    const q = search.value.toLowerCase();
-    table.innerHTML = "";
-
-    files
-      .filter(f => f.name.toLowerCase().includes(q))
-      .forEach(f => {
-        const tr = document.createElement("tr");
-        tr.innerHTML = `
-          <td>
-            <b>${f.name}</b><br>
-            <small>ID: ${f.id}</small>
-          </td>
-          <td>${f.uploader || "Anonymous"}</td>
-          <td>${f.description || "-"}</td>
-          <td>
-            <button class="success" onclick="download('${f.id}','${f.name}')">⬇</button>
-            <button class="danger" onclick="del('${f.id}')">🗑</button>
-          </td>
-        `;
-        table.appendChild(tr);
-      });
-  }
-
-  async function download(id, name) {
-    const res = await fetch("/download/" + id, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({ key: "ADMIN_OVERRIDE" })
-    });
-
-    if (!res.ok) return alert("Download failed");
-
-    const blob = await res.blob();
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = name;
-    a.click();
-  }
-
-  async function del(id) {
-    if (!confirm("Delete this file permanently?")) return;
-
-    const res = await fetch("/admin/delete/" + id, {
-      method: "POST",
-      headers: { "admin-key": ADMIN_KEY }
-    });
-
-    if (!res.ok) return alert("Delete failed");
-
-    files = files.filter(f => f.id !== id);
-    render();
-  }
-
+function login() {
+  ADMIN_KEY = document.getElementById("adminKey").value;
+  if (!ADMIN_KEY) return alert("Admin key required");
+  sessionStorage.setItem("ADMIN_KEY", ADMIN_KEY);
   load();
+}
+
+function logout() {
+  sessionStorage.removeItem("ADMIN_KEY");
+  location.reload();
+}
+
+async function load() {
+  ADMIN_KEY = sessionStorage.getItem("ADMIN_KEY");
+  if (!ADMIN_KEY) return;
+
+  document.getElementById("login").style.display = "none";
+  document.getElementById("panel").style.display = "block";
+
+  const res = await fetch("/files");
+  files = await res.json();
+  render();
+}
+
+function render() {
+  const table = document.getElementById("table");
+  table.innerHTML = "";
+
+  files.forEach(f => {
+    table.innerHTML += `
+      <tr>
+        <td>${f.name}</td>
+        <td>${f.uploader || "-"}</td>
+        <td>${f.description || "-"}</td>
+        <td>
+          <button class="success" onclick="download('${f.id}','${f.name}')">⬇</button>
+          <button class="danger" onclick="del('${f.id}')">🗑</button>
+        </td>
+      </tr>
+    `;
+  });
+}
+
+async function download(id, name) {
+  const res = await fetch("/admin/download/" + id, {
+    headers: { "admin-key": ADMIN_KEY }
+  });
+
+  if (!res.ok) return alert("Download failed");
+
+  const blob = await res.blob();
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = name;
+  a.click();
+}
+
+async function del(id) {
+  if (!confirm("Delete this file?")) return;
+
+  const res = await fetch("/admin/delete/" + id, {
+    method: "POST",
+    headers: { "admin-key": ADMIN_KEY }
+  });
+
+  if (!res.ok) return alert("Delete failed");
+
+  files = files.filter(f => f.id !== id);
+  render();
+}
+
+load();
 </script>
 
 </body>
