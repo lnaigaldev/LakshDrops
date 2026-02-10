@@ -1,37 +1,171 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+  <meta charset="UTF-8" />
   <title>Admin – LakshDrops</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: linear-gradient(135deg, #0f0f0f, #1a1a1a);
+      color: #eaeaea;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .card {
+      width: 420px;
+      background: #141414;
+      border-radius: 14px;
+      padding: 24px;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.6);
+    }
+
+    h2 {
+      margin-top: 0;
+      text-align: center;
+      letter-spacing: 0.5px;
+    }
+
+    .login {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+
+    input {
+      flex: 1;
+      padding: 10px 12px;
+      border-radius: 8px;
+      border: 1px solid #333;
+      background: #0e0e0e;
+      color: #fff;
+      outline: none;
+    }
+
+    input::placeholder {
+      color: #777;
+    }
+
+    button {
+      padding: 10px 14px;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      background: #3b82f6;
+      color: white;
+      font-weight: 500;
+      transition: background 0.2s ease;
+    }
+
+    button:hover {
+      background: #2563eb;
+    }
+
+    ul {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+
+    li {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #0e0e0e;
+      border: 1px solid #2a2a2a;
+      padding: 10px 12px;
+      border-radius: 8px;
+      margin-bottom: 10px;
+    }
+
+    .delete {
+      background: #dc2626;
+    }
+
+    .delete:hover {
+      background: #b91c1c;
+    }
+
+    .hint {
+      font-size: 12px;
+      color: #777;
+      text-align: center;
+      margin-top: 10px;
+    }
+  </style>
 </head>
+
 <body>
-<h2>Admin Dashboard</h2>
+  <div class="card">
+    <h2>Admin Dashboard</h2>
 
-<input id="key" placeholder="Admin key">
-<button onclick="load()">Login</button>
+    <div class="login">
+      <!-- PASSWORD TYPE HIDES KEY -->
+      <input id="key" type="password" placeholder="Admin key" />
+      <button onclick="loadFiles()">Login</button>
+    </div>
 
-<ul id="list"></ul>
+    <ul id="list"></ul>
 
-<script>
-async function load() {
-  const res = await fetch("/files");
-  const files = await res.json();
-  list.innerHTML = "";
+    <div class="hint">
+      Authorized access only
+    </div>
+  </div>
 
-  files.forEach(f => {
-    const li = document.createElement("li");
-    li.innerHTML = `${f.name}
-      <button onclick="del('${f.id}')">Delete</button>`;
-    list.appendChild(li);
-  });
-}
+  <script>
+    const list = document.getElementById("list");
+    const keyInput = document.getElementById("key");
 
-async function del(id) {
-  await fetch("/admin/delete/" + id, {
-    method: "POST",
-    headers: { "admin-key": key.value }
-  });
-  load();
-}
-</script>
+    async function loadFiles() {
+      list.innerHTML = "";
+
+      const res = await fetch("/files");
+      const files = await res.json();
+
+      if (!files.length) {
+        list.innerHTML = "<li>No files found</li>";
+        return;
+      }
+
+      files.forEach(file => {
+        const li = document.createElement("li");
+        li.innerHTML = `
+          <span>${file.name}</span>
+          <button class="delete" onclick="deleteFile('${file.id}')">
+            Delete
+          </button>
+        `;
+        list.appendChild(li);
+      });
+    }
+
+    async function deleteFile(id) {
+      const key = keyInput.value;
+      if (!key) {
+        alert("Admin key required");
+        return;
+      }
+
+      const res = await fetch("/admin/delete/" + id, {
+        method: "POST",
+        headers: { "admin-key": key }
+      });
+
+      if (res.status === 403) {
+        alert("Invalid admin key");
+        return;
+      }
+
+      loadFiles();
+    }
+  </script>
 </body>
 </html>
