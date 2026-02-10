@@ -53,7 +53,9 @@ async function upload() {
   fd.append("file", selectedFile);
   fd.append("accessKey", accessKey.value);
 
-  await fetch("/upload", { method: "POST", body: fd });
+  const res = await fetch("/upload", { method: "POST", body: fd });
+  if (!res.ok) return alert("Upload failed");
+  
   accessKey.value = "";
   selectedFile = null;
   dropZone.querySelector("p").innerHTML = "Drag & Drop file here<br>or click to select";
@@ -66,12 +68,12 @@ async function loadFiles() {
   fileList.innerHTML = "";
   files.forEach(f => {
     const li = document.createElement("li");
-    li.innerHTML = `${f.name} <button onclick="unlock('${f.id}')">Unlock</button>`;
+    li.innerHTML = `${f.name} <button onclick="unlock('${f.id}', '${f.name}')">Unlock</button>`;
     fileList.appendChild(li);
   });
 }
 
-async function unlock(id) {
+async function unlock(id, filename) {
   const key = prompt("Enter access key:");
   if (!key) return;
 
@@ -86,7 +88,7 @@ async function unlock(id) {
   const blob = await res.blob();
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
-  a.download = "file";
+  a.download = filename;
   a.click();
 }
 
