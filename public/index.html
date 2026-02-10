@@ -1,36 +1,77 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>LakshDrops</title>
-  <link rel="stylesheet" href="style.css">
+<meta charset="UTF-8" />
+<title>LakshDrops</title>
+<link rel="stylesheet" href="style.css">
 </head>
 <body>
-<h1>LakshDrops</h1>
 
-<h3>Upload File</h3>
-<form id="uploadForm">
-  <input type="file" name="file" required>
-  <input type="text" name="accessKey" placeholder="Set access key" required>
-  <button>Upload</button>
-</form>
+<div class="container">
+  <h1>LakshDrops</h1>
+  <p class="tagline">Drop files. Share keys. Stay secure.</p>
 
-<h3>Available Files</h3>
-<ul id="fileList"></ul>
+  <div id="dropZone">
+    <p>Drag & Drop file here<br>or click to select</p>
+    <input type="file" id="fileInput" hidden>
+  </div>
+
+  <input id="accessKey" placeholder="Set access key">
+  <button onclick="upload()">Upload</button>
+
+  <h2>Available Files</h2>
+  <ul id="fileList"></ul>
+</div>
 
 <script>
+const dropZone = document.getElementById("dropZone");
+const fileInput = document.getElementById("fileInput");
+let selectedFile = null;
+
+dropZone.onclick = () => fileInput.click();
+
+fileInput.onchange = e => selectedFile = e.target.files[0];
+
+dropZone.ondragover = e => {
+  e.preventDefault();
+  dropZone.classList.add("hover");
+};
+
+dropZone.ondragleave = () => dropZone.classList.remove("hover");
+
+dropZone.ondrop = e => {
+  e.preventDefault();
+  selectedFile = e.dataTransfer.files[0];
+  dropZone.classList.remove("hover");
+  dropZone.querySelector("p").innerText = selectedFile.name;
+};
+
+async function upload() {
+  if (!selectedFile || !accessKey.value) return alert("File & key required");
+
+  const fd = new FormData();
+  fd.append("file", selectedFile);
+  fd.append("accessKey", accessKey.value);
+
+  await fetch("/upload", { method: "POST", body: fd });
+  accessKey.value = "";
+  selectedFile = null;
+  dropZone.querySelector("p").innerHTML = "Drag & Drop file here<br>or click to select";
+  loadFiles();
+}
+
 async function loadFiles() {
   const res = await fetch("/files");
   const files = await res.json();
   fileList.innerHTML = "";
   files.forEach(f => {
     const li = document.createElement("li");
-    li.innerHTML = `${f.name} 
-      <button onclick="download('${f.id}')">Unlock</button>`;
+    li.innerHTML = `${f.name} <button onclick="unlock('${f.id}')">Unlock</button>`;
     fileList.appendChild(li);
   });
 }
 
-async function download(id) {
+async function unlock(id) {
   const key = prompt("Enter access key:");
   if (!key) return;
 
@@ -40,27 +81,17 @@ async function download(id) {
     body: JSON.stringify({ key })
   });
 
-  if (!res.ok) {
-    alert("Wrong key");
-    return;
-  }
+  if (!res.ok) return alert("Wrong key");
 
   const blob = await res.blob();
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
-  a.download = "";
+  a.download = "file";
   a.click();
 }
 
-uploadForm.onsubmit = async e => {
-  e.preventDefault();
-  const formData = new FormData(uploadForm);
-  await fetch("/upload", { method: "POST", body: formData });
-  uploadForm.reset();
-  loadFiles();
-};
-
 loadFiles();
 </script>
+
 </body>
 </html>
