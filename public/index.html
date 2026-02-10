@@ -141,10 +141,6 @@
     background: #22c55e;
   }
 
-  li button:hover {
-    box-shadow: 0 6px 18px rgba(34,197,94,0.4);
-  }
-
   /* ADMIN ICON */
   .admin-btn {
     position: absolute;
@@ -159,16 +155,11 @@
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    transition: transform 0.2s ease, background 0.2s ease;
+    transition: transform 0.2s ease;
   }
 
   .admin-btn:hover {
     transform: rotate(20deg) scale(1.1);
-    background: #1f2937;
-  }
-
-  .admin-btn span {
-    font-size: 20px;
   }
 </style>
 </head>
@@ -176,9 +167,10 @@
 <body>
 
 <div class="container">
-  <!-- ADMIN ICON -->
+
+  <!-- ADMIN -->
   <div class="admin-btn" onclick="location.href='/admin.html'" title="Admin">
-    <span>⚙️</span>
+    ⚙️
   </div>
 
   <h1>LakshDrops</h1>
@@ -189,7 +181,9 @@
     <input type="file" id="fileInput" hidden>
   </div>
 
+  <input id="uploader" placeholder="Uploader name (optional)">
   <input id="accessKey" placeholder="Set access key">
+
   <button onclick="upload()">Upload</button>
 
   <h2>Available Files</h2>
@@ -201,6 +195,7 @@
   const fileInput = document.getElementById("fileInput");
   const fileList = document.getElementById("fileList");
   const accessKey = document.getElementById("accessKey");
+  const uploader = document.getElementById("uploader");
 
   let selectedFile = null;
 
@@ -234,13 +229,17 @@
     const fd = new FormData();
     fd.append("file", selectedFile);
     fd.append("accessKey", accessKey.value);
+    fd.append("uploader", uploader.value);
 
     const res = await fetch("/upload", { method: "POST", body: fd });
     if (!res.ok) return alert("Upload failed");
 
     selectedFile = null;
     accessKey.value = "";
-    dropZone.querySelector("p").innerHTML = "Drag & Drop file here<br>or click to select";
+    uploader.value = "";
+    dropZone.querySelector("p").innerHTML =
+      "Drag & Drop file here<br>or click to select";
+
     loadFiles();
   }
 
@@ -252,7 +251,12 @@
     files.forEach(f => {
       const li = document.createElement("li");
       li.innerHTML = `
-        <span>${f.name}</span>
+        <span>
+          ${f.name}<br>
+          <small style="color:#9ca3af;font-size:11px;">
+            Uploaded by ${f.uploader || "Anonymous"}
+          </small>
+        </span>
         <button onclick="unlock('${f.id}', '${f.name}')">Unlock</button>
       `;
       fileList.appendChild(li);
