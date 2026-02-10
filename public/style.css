@@ -1,7 +1,69 @@
 body {
-  font-family: Arial;
-  padding: 30px;
+  background: #0d1117;
+  color: #e6edf3;
+  font-family: system-ui, sans-serif;
 }
+
+.container {
+  max-width: 600px;
+  margin: auto;
+  padding: 40px;
+}
+
+h1 {
+  text-align: center;
+  font-size: 2.5rem;
+}
+
+.tagline {
+  text-align: center;
+  opacity: 0.7;
+}
+
+#dropZone {
+  border: 2px dashed #30363d;
+  padding: 40px;
+  text-align: center;
+  margin: 20px 0;
+  cursor: pointer;
+  border-radius: 10px;
+  transition: 0.3s;
+}
+
+#dropZone.hover {
+  background: #161b22;
+}
+
+input, button {
+  width: 100%;
+  padding: 12px;
+  margin-top: 10px;
+  background: #161b22;
+  color: #fff;
+  border: 1px solid #30363d;
+  border-radius: 6px;
+}
+
 button {
-  margin-left: 10px;
+  background: #238636;
+  border: none;
+  cursor: pointer;
+}
+
+button:hover {
+  opacity: 0.9;
+}
+
+ul {
+  list-style: none;
+  padding: 0;
+}
+
+li {
+  background: #161b22;
+  padding: 10px;
+  margin: 8px 0;
+  display: flex;
+  justify-content: space-between;
+  border-radius: 6px;
 }
