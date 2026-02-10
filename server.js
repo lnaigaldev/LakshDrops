@@ -2,117 +2,76 @@ const express = require("express");
 const multer = require("multer");
 const fs = require("fs");
 const path = require("path");
-const crypto = require("crypto");
+const { v4: uuid } = require("uuid");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const ADMIN_KEY = process.env.ADMIN_KEY || "admin123";
 
-// ENV KEYS
-const UPLOAD_KEYS = (process.env.UPLOAD_KEYS || "").split(",").filter(Boolean);
-const ADMIN_KEY = process.env.ADMIN_KEY;
-
-// DIRECTORIES
-const UPLOAD_DIR = "uploads";
-const DB_FILE = "files.json";
-
-// HELPERS
-function readDB() {
-  return JSON.parse(fs.readFileSync(DB_FILE, "utf8"));
-}
-
-function writeDB(data) {
-  fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2));
-}
-
-function genKey(bytes = 16) {
-  return crypto.randomBytes(bytes).toString("hex");
-}
-
-// MIDDLEWARE
 app.use(express.json());
 app.use(express.static("public"));
 
-// AUTH
-function checkUploadKey(req, res, next) {
-  const key = req.headers["x-upload-key"];
-  if (!key || !UPLOAD_KEYS.includes(key)) {
-    return res.status(401).json({ error: "Invalid upload key" });
+if (!fs.existsSync("uploads")) fs.mkdirSync("uploads");
+if (!fs.existsSync("files.json")) fs.writeFileSync("files.json", "[]");
+
+const storage = multer.diskStorage({
+  destination: "uploads",
+  filename: (req, file, cb) => {
+    cb(null, Date.now() + "-" + file.originalname);
   }
-  next();
-}
+});
+const upload = multer({ storage });
 
-function checkAdminKey(req, res, next) {
-  const key = req.headers["x-admin-key"];
-  if (!key || key !== ADMIN_KEY) {
-    return res.status(403).json({ error: "Admin only" });
-  }
-  next();
-}
+// 📤 Upload file
+app.post("/upload", upload.single("file"), (req, res) => {
+  const { accessKey } = req.body;
+  if (!accessKey) return res.status(400).json({ error: "Access key required" });
 
-// MULTER
-const upload = multer({
-  dest: UPLOAD_DIR,
-  limits: { fileSize: 50 * 1024 * 1024 }
+  const files = JSON.parse(fs.readFileSync("files.json"));
+  files.push({
+    id: uuid(),
+    name: req.file.originalname,
+    path: req.file.path,
+    key: accessKey,
+    uploadedAt: new Date().toISOString()
+  });
+
+  fs.writeFileSync("files.json", JSON.stringify(files, null, 2));
+  res.json({ message: "Uploaded successfully" });
 });
 
-// UPLOAD
-app.post("/upload", checkUploadKey, upload.single("file"), (req, res) => {
-  const db = readDB();
-
-  const fileId = genKey(8);
-  const downloadKey = genKey(16);
-
-  db[fileId] = {
-    storedName: req.file.filename,
-    originalName: req.file.originalname,
-    downloadKey,
-    uploadedAt: Date.now()
-  };
-
-  writeDB(db);
-
-  const downloadUrl =
-    `${req.protocol}://${req.get("host")}` +
-    `/download/${fileId}?key=${downloadKey}`;
-
-  res.json({ fileId, downloadKey, downloadUrl });
+// 📄 List files
+app.get("/files", (req, res) => {
+  const files = JSON.parse(fs.readFileSync("files.json"));
+  res.json(files.map(f => ({ id: f.id, name: f.name })));
 });
 
-// DOWNLOAD (SECURE)
-app.get("/download/:id", (req, res) => {
-  const db = readDB();
-  const file = db[req.params.id];
+// 🔐 Download file
+app.post("/download/:id", (req, res) => {
+  const { key } = req.body;
+  const files = JSON.parse(fs.readFileSync("files.json"));
+  const file = files.find(f => f.id === req.params.id);
 
-  if (!file) return res.status(404).send("File not found");
-  if (file.downloadKey !== req.query.key)
-    return res.status(403).send("Invalid download key");
+  if (!file) return res.status(404).json({ error: "File not found" });
+  if (file.key !== key) return res.status(403).json({ error: "Wrong key" });
 
-  res.download(
-    path.join(UPLOAD_DIR, file.storedName),
-    file.originalName
-  );
+  res.download(path.resolve(file.path), file.name);
 });
 
-// ADMIN: LIST FILES
-app.get("/admin/files", checkAdminKey, (req, res) => {
-  res.json(readDB());
-});
+// 🗑 Admin delete
+app.post("/admin/delete/:id", (req, res) => {
+  if (req.headers["admin-key"] !== ADMIN_KEY)
+    return res.status(403).json({ error: "Unauthorized" });
 
-// ADMIN: DELETE FILE
-app.delete("/admin/files/:id", checkAdminKey, (req, res) => {
-  const db = readDB();
-  const file = db[req.params.id];
-
+  let files = JSON.parse(fs.readFileSync("files.json"));
+  const file = files.find(f => f.id === req.params.id);
   if (!file) return res.status(404).json({ error: "Not found" });
 
-  fs.unlinkSync(path.join(UPLOAD_DIR, file.storedName));
-  delete db[req.params.id];
-  writeDB(db);
+  fs.unlinkSync(file.path);
+  files = files.filter(f => f.id !== req.params.id);
+  fs.writeFileSync("files.json", JSON.stringify(files, null, 2));
 
-  res.json({ success: true });
+  res.json({ message: "Deleted" });
 });
 
-// START
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
+app.listen(PORT, () => console.log("LakshDrops running on", PORT));
