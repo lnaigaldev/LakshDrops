@@ -11,67 +11,71 @@ const ADMIN_KEY = process.env.ADMIN_KEY || "admin123";
 app.use(express.json());
 app.use(express.static("public"));
 
-if (!fs.existsSync("uploads")) fs.mkdirSync("uploads");
+const uploadDir = path.join(__dirname, "uploads");
+if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
 if (!fs.existsSync("files.json")) fs.writeFileSync("files.json", "[]");
 
+function readFiles() {
+  try {
+    return JSON.parse(fs.readFileSync("files.json"));
+  } catch {
+    return [];
+  }
+}
+
 const storage = multer.diskStorage({
-  destination: "uploads",
-  filename: (req, file, cb) => {
+  destination: uploadDir,
+  filename: (_, file, cb) => {
     cb(null, Date.now() + "-" + file.originalname);
   }
 });
 const upload = multer({ storage });
 
-// 📤 Upload file
 app.post("/upload", upload.single("file"), (req, res) => {
   const { accessKey } = req.body;
-  if (!accessKey) return res.status(400).json({ error: "Access key required" });
+  if (!accessKey) return res.status(400).json({ error: "Key required" });
 
-  const files = JSON.parse(fs.readFileSync("files.json"));
+  const files = readFiles();
   files.push({
     id: uuid(),
     name: req.file.originalname,
     path: req.file.path,
-    key: accessKey,
-    uploadedAt: new Date().toISOString()
+    key: accessKey
   });
 
   fs.writeFileSync("files.json", JSON.stringify(files, null, 2));
-  res.json({ message: "Uploaded successfully" });
+  res.json({ success: true });
 });
 
-// 📄 List files
-app.get("/files", (req, res) => {
-  const files = JSON.parse(fs.readFileSync("files.json"));
+app.get("/files", (_, res) => {
+  const files = readFiles();
   res.json(files.map(f => ({ id: f.id, name: f.name })));
 });
 
-// 🔐 Download file
 app.post("/download/:id", (req, res) => {
   const { key } = req.body;
-  const files = JSON.parse(fs.readFileSync("files.json"));
-  const file = files.find(f => f.id === req.params.id);
+  const file = readFiles().find(f => f.id === req.params.id);
 
-  if (!file) return res.status(404).json({ error: "File not found" });
-  if (file.key !== key) return res.status(403).json({ error: "Wrong key" });
+  if (!file) return res.sendStatus(404);
+  if (file.key !== key) return res.sendStatus(403);
 
   res.download(path.resolve(file.path), file.name);
 });
 
-// 🗑 Admin delete
 app.post("/admin/delete/:id", (req, res) => {
   if (req.headers["admin-key"] !== ADMIN_KEY)
-    return res.status(403).json({ error: "Unauthorized" });
+    return res.sendStatus(403);
 
-  let files = JSON.parse(fs.readFileSync("files.json"));
+  let files = readFiles();
   const file = files.find(f => f.id === req.params.id);
-  if (!file) return res.status(404).json({ error: "Not found" });
+  if (!file) return res.sendStatus(404);
 
   fs.unlinkSync(file.path);
   files = files.filter(f => f.id !== req.params.id);
   fs.writeFileSync("files.json", JSON.stringify(files, null, 2));
-
-  res.json({ message: "Deleted" });
+  res.json({ deleted: true });
 });
 
-app.listen(PORT, () => console.log("LakshDrops running on", PORT));
+app.listen(PORT, () =>
+  console.log("LakshDrops running on", PORT)
+);
