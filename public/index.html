@@ -35,19 +35,12 @@
     background: rgba(20, 20, 20, 0.75);
     backdrop-filter: blur(14px);
     box-shadow: 0 25px 60px rgba(0,0,0,0.6);
-    animation: fadeIn 0.6s ease;
     position: relative;
-  }
-
-  @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(10px); }
-    to { opacity: 1; transform: translateY(0); }
   }
 
   h1 {
     margin: 0;
     text-align: center;
-    letter-spacing: 1px;
   }
 
   .tagline {
@@ -63,19 +56,11 @@
     padding: 26px;
     text-align: center;
     cursor: pointer;
-    transition: all 0.3s ease;
     margin-bottom: 14px;
   }
 
   #dropZone.hover {
     background: rgba(59,130,246,0.15);
-    transform: scale(1.02);
-  }
-
-  #dropZone p {
-    margin: 0;
-    font-size: 14px;
-    color: #cbd5f5;
   }
 
   input {
@@ -85,7 +70,6 @@
     border: 1px solid #2a2a2a;
     background: #0e0e0e;
     color: #fff;
-    outline: none;
     margin-bottom: 12px;
   }
 
@@ -98,40 +82,22 @@
     background: linear-gradient(135deg, #3b82f6, #06b6d4);
     color: white;
     font-weight: 600;
-    transition: transform 0.15s ease, box-shadow 0.15s ease;
-  }
-
-  button:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 10px 25px rgba(59,130,246,0.4);
-  }
-
-  h2 {
-    margin-top: 24px;
-    font-size: 18px;
   }
 
   ul {
     list-style: none;
     padding: 0;
-    margin: 10px 0 0;
+    margin-top: 10px;
   }
 
   li {
     display: flex;
     justify-content: space-between;
-    align-items: center;
     background: #0e0e0e;
     border: 1px solid #2a2a2a;
-    padding: 10px 12px;
+    padding: 10px;
     border-radius: 10px;
     margin-bottom: 10px;
-    animation: slideUp 0.3s ease;
-  }
-
-  @keyframes slideUp {
-    from { opacity: 0; transform: translateY(6px); }
-    to { opacity: 1; transform: translateY(0); }
   }
 
   li button {
@@ -141,7 +107,6 @@
     background: #22c55e;
   }
 
-  /* ADMIN ICON */
   .admin-btn {
     position: absolute;
     top: -14px;
@@ -155,11 +120,6 @@
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    transition: transform 0.2s ease;
-  }
-
-  .admin-btn:hover {
-    transform: rotate(20deg) scale(1.1);
   }
 </style>
 </head>
@@ -168,10 +128,7 @@
 
 <div class="container">
 
-  <!-- ADMIN -->
-  <div class="admin-btn" onclick="location.href='/admin.html'" title="Admin">
-    ⚙️
-  </div>
+  <div class="admin-btn" onclick="location.href='/admin.html'" title="Admin">⚙️</div>
 
   <h1>LakshDrops</h1>
   <p class="tagline">Drop files. Share keys. Stay secure.</p>
@@ -182,6 +139,7 @@
   </div>
 
   <input id="uploader" placeholder="Uploader name (optional)">
+  <input id="description" placeholder="Description (optional)">
   <input id="accessKey" placeholder="Set access key">
 
   <button onclick="upload()">Upload</button>
@@ -196,6 +154,7 @@
   const fileList = document.getElementById("fileList");
   const accessKey = document.getElementById("accessKey");
   const uploader = document.getElementById("uploader");
+  const description = document.getElementById("description");
 
   let selectedFile = null;
 
@@ -230,15 +189,16 @@
     fd.append("file", selectedFile);
     fd.append("accessKey", accessKey.value);
     fd.append("uploader", uploader.value);
+    fd.append("description", description.value);
 
     const res = await fetch("/upload", { method: "POST", body: fd });
     if (!res.ok) return alert("Upload failed");
 
-    selectedFile = null;
-    accessKey.value = "";
     uploader.value = "";
-    dropZone.querySelector("p").innerHTML =
-      "Drag & Drop file here<br>or click to select";
+    description.value = "";
+    accessKey.value = "";
+    selectedFile = null;
+    dropZone.querySelector("p").innerHTML = "Drag & Drop file here<br>or click to select";
 
     loadFiles();
   }
@@ -252,8 +212,9 @@
       const li = document.createElement("li");
       li.innerHTML = `
         <span>
-          ${f.name}<br>
-          <small style="color:#9ca3af;font-size:11px;">
+          <b>${f.name}</b><br>
+          <small style="color:#9ca3af">
+            ${f.description || "No description"}<br>
             Uploaded by ${f.uploader || "Anonymous"}
           </small>
         </span>
