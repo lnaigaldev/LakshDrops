@@ -29,7 +29,7 @@ const storage = multer.diskStorage({
     cb(null, Date.now() + "-" + file.originalname);
   }
 });
-const upload = multer({ storage });
+const upload = multer({ storage, limits: { fileSize: 500 * 1024 * 1024 } }); // 500MB limit
 
 app.post("/upload", upload.single("file"), (req, res) => {
   const { accessKey } = req.body;
@@ -43,8 +43,10 @@ app.post("/upload", upload.single("file"), (req, res) => {
     key: accessKey
   });
 
-  fs.writeFileSync("files.json", JSON.stringify(files, null, 2));
-  res.json({ success: true });
+  fs.writeFile("files.json", JSON.stringify(files, null, 2), (err) => {
+    if (err) return res.status(500).json({ error: "Upload failed" });
+    res.json({ success: true });
+  });
 });
 
 app.get("/files", (_, res) => {
@@ -70,10 +72,14 @@ app.post("/admin/delete/:id", (req, res) => {
   const file = files.find(f => f.id === req.params.id);
   if (!file) return res.sendStatus(404);
 
-  fs.unlinkSync(file.path);
-  files = files.filter(f => f.id !== req.params.id);
-  fs.writeFileSync("files.json", JSON.stringify(files, null, 2));
-  res.json({ deleted: true });
+  fs.unlink(file.path, (err) => {
+    if (err) console.error("Error deleting file:", err);
+    files = files.filter(f => f.id !== req.params.id);
+    fs.writeFile("files.json", JSON.stringify(files, null, 2), (err) => {
+      if (err) return res.status(500).json({ error: "Delete failed" });
+      res.json({ deleted: true });
+    });
+  });
 });
 
 app.listen(PORT, () =>
