@@ -74,7 +74,9 @@ app.get("/admin/download/:id", (req, res) => {
   const file = files.find(f => f.id === req.params.id);
   if (!file) return res.sendStatus(404);
 
-  res.download(file.path, file.name);
+  const absolutePath = path.resolve(file.path);
+res.download(absolutePath, file.name);
+
 });
 
 // ---------------- ADMIN DELETE ----------------
