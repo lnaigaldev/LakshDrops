@@ -3,11 +3,184 @@
 <head>
 <meta charset="UTF-8" />
 <title>LakshDrops</title>
-<link rel="stylesheet" href="style.css">
+
+<style>
+  * {
+    box-sizing: border-box;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont;
+  }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background: linear-gradient(120deg, #0f2027, #203a43, #2c5364);
+    background-size: 300% 300%;
+    animation: bgMove 10s ease infinite;
+    color: #eaeaea;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  @keyframes bgMove {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+  }
+
+  .container {
+    width: 420px;
+    padding: 28px;
+    border-radius: 18px;
+    background: rgba(20, 20, 20, 0.75);
+    backdrop-filter: blur(14px);
+    box-shadow: 0 25px 60px rgba(0,0,0,0.6);
+    animation: fadeIn 0.6s ease;
+    position: relative;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  h1 {
+    margin: 0;
+    text-align: center;
+    letter-spacing: 1px;
+  }
+
+  .tagline {
+    text-align: center;
+    font-size: 13px;
+    color: #9ca3af;
+    margin-bottom: 20px;
+  }
+
+  #dropZone {
+    border: 2px dashed #3b82f6;
+    border-radius: 14px;
+    padding: 26px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    margin-bottom: 14px;
+  }
+
+  #dropZone.hover {
+    background: rgba(59,130,246,0.15);
+    transform: scale(1.02);
+  }
+
+  #dropZone p {
+    margin: 0;
+    font-size: 14px;
+    color: #cbd5f5;
+  }
+
+  input {
+    width: 100%;
+    padding: 12px;
+    border-radius: 10px;
+    border: 1px solid #2a2a2a;
+    background: #0e0e0e;
+    color: #fff;
+    outline: none;
+    margin-bottom: 12px;
+  }
+
+  button {
+    width: 100%;
+    padding: 12px;
+    border-radius: 10px;
+    border: none;
+    cursor: pointer;
+    background: linear-gradient(135deg, #3b82f6, #06b6d4);
+    color: white;
+    font-weight: 600;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+  }
+
+  button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 25px rgba(59,130,246,0.4);
+  }
+
+  h2 {
+    margin-top: 24px;
+    font-size: 18px;
+  }
+
+  ul {
+    list-style: none;
+    padding: 0;
+    margin: 10px 0 0;
+  }
+
+  li {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #0e0e0e;
+    border: 1px solid #2a2a2a;
+    padding: 10px 12px;
+    border-radius: 10px;
+    margin-bottom: 10px;
+    animation: slideUp 0.3s ease;
+  }
+
+  @keyframes slideUp {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  li button {
+    width: auto;
+    padding: 6px 10px;
+    font-size: 12px;
+    background: #22c55e;
+  }
+
+  li button:hover {
+    box-shadow: 0 6px 18px rgba(34,197,94,0.4);
+  }
+
+  /* ADMIN ICON */
+  .admin-btn {
+    position: absolute;
+    top: -14px;
+    right: -14px;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: #111;
+    border: 1px solid #333;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: transform 0.2s ease, background 0.2s ease;
+  }
+
+  .admin-btn:hover {
+    transform: rotate(20deg) scale(1.1);
+    background: #1f2937;
+  }
+
+  .admin-btn span {
+    font-size: 20px;
+  }
+</style>
 </head>
+
 <body>
 
 <div class="container">
+  <!-- ADMIN ICON -->
+  <div class="admin-btn" onclick="location.href='/admin.html'" title="Admin">
+    <span>⚙️</span>
+  </div>
+
   <h1>LakshDrops</h1>
   <p class="tagline">Drop files. Share keys. Stay secure.</p>
 
@@ -24,75 +197,88 @@
 </div>
 
 <script>
-const dropZone = document.getElementById("dropZone");
-const fileInput = document.getElementById("fileInput");
-let selectedFile = null;
+  const dropZone = document.getElementById("dropZone");
+  const fileInput = document.getElementById("fileInput");
+  const fileList = document.getElementById("fileList");
+  const accessKey = document.getElementById("accessKey");
 
-dropZone.onclick = () => fileInput.click();
+  let selectedFile = null;
 
-fileInput.onchange = e => selectedFile = e.target.files[0];
+  dropZone.onclick = () => fileInput.click();
 
-dropZone.ondragover = e => {
-  e.preventDefault();
-  dropZone.classList.add("hover");
-};
+  fileInput.onchange = e => {
+    selectedFile = e.target.files[0];
+    dropZone.querySelector("p").innerText = selectedFile.name;
+  };
 
-dropZone.ondragleave = () => dropZone.classList.remove("hover");
+  dropZone.ondragover = e => {
+    e.preventDefault();
+    dropZone.classList.add("hover");
+  };
 
-dropZone.ondrop = e => {
-  e.preventDefault();
-  selectedFile = e.dataTransfer.files[0];
-  dropZone.classList.remove("hover");
-  dropZone.querySelector("p").innerText = selectedFile.name;
-};
+  dropZone.ondragleave = () => dropZone.classList.remove("hover");
 
-async function upload() {
-  if (!selectedFile || !accessKey.value) return alert("File & key required");
+  dropZone.ondrop = e => {
+    e.preventDefault();
+    selectedFile = e.dataTransfer.files[0];
+    dropZone.classList.remove("hover");
+    dropZone.querySelector("p").innerText = selectedFile.name;
+  };
 
-  const fd = new FormData();
-  fd.append("file", selectedFile);
-  fd.append("accessKey", accessKey.value);
+  async function upload() {
+    if (!selectedFile || !accessKey.value) {
+      alert("File & key required");
+      return;
+    }
 
-  const res = await fetch("/upload", { method: "POST", body: fd });
-  if (!res.ok) return alert("Upload failed");
-  
-  accessKey.value = "";
-  selectedFile = null;
-  dropZone.querySelector("p").innerHTML = "Drag & Drop file here<br>or click to select";
+    const fd = new FormData();
+    fd.append("file", selectedFile);
+    fd.append("accessKey", accessKey.value);
+
+    const res = await fetch("/upload", { method: "POST", body: fd });
+    if (!res.ok) return alert("Upload failed");
+
+    selectedFile = null;
+    accessKey.value = "";
+    dropZone.querySelector("p").innerHTML = "Drag & Drop file here<br>or click to select";
+    loadFiles();
+  }
+
+  async function loadFiles() {
+    const res = await fetch("/files");
+    const files = await res.json();
+    fileList.innerHTML = "";
+
+    files.forEach(f => {
+      const li = document.createElement("li");
+      li.innerHTML = `
+        <span>${f.name}</span>
+        <button onclick="unlock('${f.id}', '${f.name}')">Unlock</button>
+      `;
+      fileList.appendChild(li);
+    });
+  }
+
+  async function unlock(id, filename) {
+    const key = prompt("Enter access key:");
+    if (!key) return;
+
+    const res = await fetch("/download/" + id, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ key })
+    });
+
+    if (!res.ok) return alert("Wrong key");
+
+    const blob = await res.blob();
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = filename;
+    a.click();
+  }
+
   loadFiles();
-}
-
-async function loadFiles() {
-  const res = await fetch("/files");
-  const files = await res.json();
-  fileList.innerHTML = "";
-  files.forEach(f => {
-    const li = document.createElement("li");
-    li.innerHTML = `${f.name} <button onclick="unlock('${f.id}', '${f.name}')">Unlock</button>`;
-    fileList.appendChild(li);
-  });
-}
-
-async function unlock(id, filename) {
-  const key = prompt("Enter access key:");
-  if (!key) return;
-
-  const res = await fetch("/download/" + id, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ key })
-  });
-
-  if (!res.ok) return alert("Wrong key");
-
-  const blob = await res.blob();
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(blob);
-  a.download = filename;
-  a.click();
-}
-
-loadFiles();
 </script>
 
 </body>
