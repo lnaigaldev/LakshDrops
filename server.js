@@ -8,16 +8,13 @@ const app = express();
 const PORT = 3000;
 const ADMIN_KEY = "admin123";
 
-/* ---------- MIDDLEWARE ---------- */
 app.use(express.json());
-app.use(express.urlencoded({ extended: true })); // IMPORTANT
 app.use(express.static("public"));
 
-/* ---------- UPLOADS FOLDER ---------- */
 const uploadDir = path.join(__dirname, "uploads");
 if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir);
 
-/* ---------- MULTER CONFIG ---------- */
+// ---------------- MULTER ----------------
 const storage = multer.diskStorage({
   destination: uploadDir,
   filename: (req, file, cb) => {
@@ -26,21 +23,17 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage });
 
-/* ---------- IN-MEMORY STORE ---------- */
+// ---------------- DATA STORE ----------------
 let files = [];
 
-/* ---------- UPLOAD ---------- */
+// ---------------- UPLOAD ----------------
 app.post("/upload", upload.single("file"), (req, res) => {
   const { uploader, description, key } = req.body;
-
-  if (!req.file || !key) {
-    return res.status(400).json({ error: "File and key required" });
-  }
 
   const fileData = {
     id: uuid(),
     name: req.file.originalname,
-    path: path.join(uploadDir, req.file.filename), // ABSOLUTE SAFE PATH
+    path: req.file.path,
     uploader,
     description,
     key
@@ -50,68 +43,56 @@ app.post("/upload", upload.single("file"), (req, res) => {
   res.json({ success: true, id: fileData.id });
 });
 
-/* ---------- LIST FILES ---------- */
+// ---------------- LIST FILES ----------------
 app.get("/files", (req, res) => {
-  res.json(
-    files.map(f => ({
-      id: f.id,
-      name: f.name,
-      uploader: f.uploader,
-      description: f.description
-    }))
-  );
+  res.json(files.map(f => ({
+    id: f.id,
+    name: f.name,
+    uploader: f.uploader,
+    description: f.description
+  })));
 });
 
-/* ---------- USER DOWNLOAD ---------- */
+// ---------------- USER DOWNLOAD ----------------
 app.post("/download/:id", (req, res) => {
   const file = files.find(f => f.id === req.params.id);
-  if (!file) return res.status(404).send("File not found");
+  if (!file) return res.sendStatus(404);
 
-  if (!req.body.key || req.body.key !== file.key) {
+  if (req.body.key !== file.key) {
     return res.status(403).send("Invalid key");
   }
 
-  if (!fs.existsSync(file.path)) {
-    return res.status(404).send("File missing on server");
-  }
-
   res.download(file.path, file.name);
 });
 
-/* ---------- ADMIN DOWNLOAD ---------- */
+// ---------------- ADMIN DOWNLOAD ----------------
 app.get("/admin/download/:id", (req, res) => {
   if (req.headers["admin-key"] !== ADMIN_KEY) {
-    return res.status(403).send("Unauthorized");
+    return res.sendStatus(403);
   }
 
   const file = files.find(f => f.id === req.params.id);
-  if (!file) return res.status(404).send("File not found");
-
-  if (!fs.existsSync(file.path)) {
-    return res.status(404).send("File missing on server");
-  }
+  if (!file) return res.sendStatus(404);
 
   res.download(file.path, file.name);
 });
 
-/* ---------- ADMIN DELETE ---------- */
+// ---------------- ADMIN DELETE ----------------
 app.post("/admin/delete/:id", (req, res) => {
   if (req.headers["admin-key"] !== ADMIN_KEY) {
-    return res.status(403).send("Unauthorized");
+    return res.sendStatus(403);
   }
 
   const index = files.findIndex(f => f.id === req.params.id);
-  if (index === -1) return res.status(404).send("File not found");
+  if (index === -1) return res.sendStatus(404);
 
-  if (fs.existsSync(files[index].path)) {
-    fs.unlinkSync(files[index].path);
-  }
-
+  fs.unlinkSync(files[index].path);
   files.splice(index, 1);
+
   res.sendStatus(200);
 });
 
-/* ---------- START SERVER ---------- */
+// ---------------- START ----------------
 app.listen(PORT, () => {
-  console.log(`✅ Server running at http://localhost:${PORT}`);
+  console.log(`Server running on http://localhost:${PORT}`);
 });
