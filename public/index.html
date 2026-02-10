@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>LakshDrops</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<h1>LakshDrops</h1>
+
+<h3>Upload File</h3>
+<form id="uploadForm">
+  <input type="file" name="file" required>
+  <input type="text" name="accessKey" placeholder="Set access key" required>
+  <button>Upload</button>
+</form>
+
+<h3>Available Files</h3>
+<ul id="fileList"></ul>
+
+<script>
+async function loadFiles() {
+  const res = await fetch("/files");
+  const files = await res.json();
+  fileList.innerHTML = "";
+  files.forEach(f => {
+    const li = document.createElement("li");
+    li.innerHTML = `${f.name} 
+      <button onclick="download('${f.id}')">Unlock</button>`;
+    fileList.appendChild(li);
+  });
+}
+
+async function download(id) {
+  const key = prompt("Enter access key:");
+  if (!key) return;
+
+  const res = await fetch("/download/" + id, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ key })
+  });
+
+  if (!res.ok) {
+    alert("Wrong key");
+    return;
+  }
+
+  const blob = await res.blob();
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "";
+  a.click();
+}
+
+uploadForm.onsubmit = async e => {
+  e.preventDefault();
+  const formData = new FormData(uploadForm);
+  await fetch("/upload", { method: "POST", body: formData });
+  uploadForm.reset();
+  loadFiles();
+};
+
+loadFiles();
+</script>
+</body>
+</html>
