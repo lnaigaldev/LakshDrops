@@ -29,10 +29,14 @@ const storage = multer.diskStorage({
     cb(null, Date.now() + "-" + file.originalname);
   }
 });
-const upload = multer({ storage, limits: { fileSize: 500 * 1024 * 1024 } }); // 500MB limit
+
+const upload = multer({
+  storage,
+  limits: { fileSize: 500 * 1024 * 1024 } // 500MB
+});
 
 app.post("/upload", upload.single("file"), (req, res) => {
-  const { accessKey } = req.body;
+  const { accessKey, uploader } = req.body; // 👈 added uploader
   if (!accessKey) return res.status(400).json({ error: "Key required" });
 
   const files = readFiles();
@@ -40,7 +44,8 @@ app.post("/upload", upload.single("file"), (req, res) => {
     id: uuid(),
     name: req.file.originalname,
     path: req.file.path,
-    key: accessKey
+    key: accessKey,
+    uploader: uploader || "Anonymous" // 👈 optional uploader
   });
 
   fs.writeFile("files.json", JSON.stringify(files, null, 2), (err) => {
@@ -51,7 +56,13 @@ app.post("/upload", upload.single("file"), (req, res) => {
 
 app.get("/files", (_, res) => {
   const files = readFiles();
-  res.json(files.map(f => ({ id: f.id, name: f.name })));
+  res.json(
+    files.map(f => ({
+      id: f.id,
+      name: f.name,
+      uploader: f.uploader // 👈 exposed to frontend
+    }))
+  );
 });
 
 app.post("/download/:id", (req, res) => {
@@ -61,7 +72,7 @@ app.post("/download/:id", (req, res) => {
   if (!file) return res.sendStatus(404);
   if (file.key !== key) return res.sendStatus(403);
 
-  res.download(path.resolve(file.path), file.name);
+  res.download(path.resolve(file.path), file.name); // filename preserved ✅
 });
 
 app.post("/admin/delete/:id", (req, res) => {
