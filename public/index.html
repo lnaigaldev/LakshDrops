@@ -140,7 +140,13 @@
 
   <input id="uploader" placeholder="Uploader name (optional)">
   <input id="description" placeholder="Description (optional)">
-  <input id="accessKey" placeholder="Set access key">
+  <input
+    id="accessKey"
+    placeholder="4-digit access key"
+    maxlength="4"
+    pattern="\d{4}"
+    inputmode="numeric"
+  >
 
   <button onclick="upload()">Upload</button>
 
@@ -162,7 +168,7 @@
 
   fileInput.onchange = e => {
     selectedFile = e.target.files[0];
-    dropZone.querySelector("p").innerText = selectedFile.name;
+    dropZone.querySelector("p").innerText = selectedFile ? selectedFile.name : "Drag & Drop file here\nor click to select";
   };
 
   dropZone.ondragover = e => {
@@ -176,7 +182,7 @@
     e.preventDefault();
     selectedFile = e.dataTransfer.files[0];
     dropZone.classList.remove("hover");
-    dropZone.querySelector("p").innerText = selectedFile.name;
+    dropZone.querySelector("p").innerText = selectedFile ? selectedFile.name : "Drag & Drop file here\nor click to select";
   };
 
   async function upload() {
@@ -184,15 +190,24 @@
       alert("File & key required");
       return;
     }
+    if (!/^[0-9]{4}$/.test(accessKey.value.trim())) {
+      alert("Access key must be 4 digits.");
+      return;
+    }
 
     const fd = new FormData();
     fd.append("file", selectedFile);
-    fd.append("accessKey", accessKey.value);
+    fd.append("key", accessKey.value); // Corrected field for backend!
     fd.append("uploader", uploader.value);
     fd.append("description", description.value);
 
     const res = await fetch("/upload", { method: "POST", body: fd });
-    if (!res.ok) return alert("Upload failed");
+    if (!res.ok) {
+      let msg = "Upload failed";
+      try { msg = (await res.json()).error || msg } catch {}
+      alert(msg);
+      return;
+    }
 
     uploader.value = "";
     description.value = "";
@@ -225,8 +240,11 @@
   }
 
   async function unlock(id, filename) {
-    const key = prompt("Enter access key:");
-    if (!key) return;
+    const key = prompt("Enter the 4-digit access key:");
+    if (!key || !/^[0-9]{4}$/.test(key.trim())) {
+      alert("Please enter a valid 4-digit key.");
+      return;
+    }
 
     const res = await fetch("/download/" + id, {
       method: "POST",
@@ -234,7 +252,12 @@
       body: JSON.stringify({ key })
     });
 
-    if (!res.ok) return alert("Wrong key");
+    if (!res.ok) {
+      let msg = "Wrong key";
+      try { msg = (await res.json()).error || msg } catch {}
+      alert(msg);
+      return;
+    }
 
     const blob = await res.blob();
     const a = document.createElement("a");
