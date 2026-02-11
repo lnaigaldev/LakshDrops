@@ -7,6 +7,7 @@ const fs = require("fs");
 const app = express();
 const PORT = 3000;
 const OWNER_EMAIL = "lnaigaldev@gmail.com";
+const FILES_JSON = path.join(__dirname, "files.json");
 
 app.use(express.json());
 app.use(express.static("public"));
@@ -23,8 +24,30 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage });
 
-// --------- Data Store ---------
+// --------- Persistent Files Array ---------
 let files = [];
+try {
+  if (fs.existsSync(FILES_JSON)) {
+    files = JSON.parse(fs.readFileSync(FILES_JSON, "utf-8"));
+    if (!Array.isArray(files)) files = [];
+  } else {
+    files = [];
+  }
+} catch (e) {
+  console.error("Failed to load files.json. Starting with empty array.");
+  files = [];
+}
+
+// Helper to save files array to JSON
+const saveFiles = () => {
+  try {
+    fs.writeFileSync(FILES_JSON, JSON.stringify(files, null, 2), "utf-8");
+  } catch (err) {
+    console.error("Error saving files.json:", err);
+  }
+};
+
+// Admins array in memory
 let adminEmails = [OWNER_EMAIL]; // Owner is initial admin
 
 // --------- Upload Endpoint ---------
@@ -52,6 +75,7 @@ app.post("/upload", upload.single("file"), (req, res) => {
   };
 
   files.push(fileData);
+  saveFiles();
   res.json({ success: true, id: fileData.id });
 });
 
@@ -127,9 +151,15 @@ app.post("/admin/delete/:id", (req, res) => {
   const index = files.findIndex((f) => f.id === req.params.id);
   if (index === -1) return res.status(404).json({ error: "File not found" });
 
-  fs.unlinkSync(files[index].path);
+  try {
+    fs.unlinkSync(files[index].path);
+  } catch (err) {
+    if (err.code !== 'ENOENT') {
+      return res.status(500).json({ error: "Could not delete file from disk." });
+    }
+  }
   files.splice(index, 1);
-
+  saveFiles();
   res.json({ success: true });
 });
 
