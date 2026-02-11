@@ -37,7 +37,8 @@ th, td {
 
 <div class="login" id="login">
   <h2>🔐 Admin Login</h2>
-  <input id="adminEmail" type="email" placeholder="Admin email">
+  <input id="adminEmail" type="password" placeholder="Admin username or email">
+  <input id="adminPassword" type="password" placeholder="Password">
   <button onclick="login()">Login</button>
 </div>
 
@@ -63,11 +64,32 @@ th, td {
 let ADMIN_EMAIL = "";
 let files = [];
 
-function login() {
-  ADMIN_EMAIL = document.getElementById("adminEmail").value.trim();
-  if (!ADMIN_EMAIL) return alert("Admin email required");
-  sessionStorage.setItem("ADMIN_EMAIL", ADMIN_EMAIL);
-  load();
+async function login() {
+  const email = document.getElementById("adminEmail").value.trim();
+  if (!email) return alert("Admin email required");
+
+  // Validate with server
+  try {
+    const pwd = document.getElementById('adminPassword').value || '';
+    const res = await fetch('/admin/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: email, password: pwd })
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data.isAdmin) {
+      return alert(data.error || 'Not an admin or login failed.');
+    }
+    // Store matched full email (returned from server) for subsequent admin actions,
+    // but don't reveal it in the UI to avoid shoulder surfing.
+    ADMIN_EMAIL = data.matchedEmail || email;
+    sessionStorage.setItem('ADMIN_EMAIL', ADMIN_EMAIL);
+    // clear password input immediately
+    document.getElementById('adminPassword').value = '';
+    load();
+  } catch (err) {
+    alert('Login error');
+  }
 }
 
 function logout() {
