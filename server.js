@@ -31,13 +31,19 @@ let adminEmails = [OWNER_EMAIL]; // Start with owner as initial admin
 app.post("/upload", upload.single("file"), (req, res) => {
   const { uploader, description, key } = req.body;
 
+  // Validate key is a 4-digit number (string or number)
+  const keyStr = String(key).trim();
+  if (!/^[0-9]{4}$/.test(keyStr)) {
+    return res.status(400).send("Key must be a 4-digit number.");
+  }
+
   const fileData = {
     id: uuid(),
     name: req.file.originalname,
     path: req.file.path,
     uploader,
     description,
-    key
+    key: keyStr
   };
 
   files.push(fileData);
@@ -65,9 +71,14 @@ app.post("/download/:id", (req, res) => {
     return res.download(file.path, file.name);
   }
 
-  // Non-admin: require valid key
-  if (req.body.key !== file.key) {
-    return res.status(403).send("Invalid key");
+  // Validate and compare keys
+  const reqKey = String(req.body.key).trim();
+  const storedKey = String(file.key).trim();
+  if (!/^[0-9]{4}$/.test(reqKey)) {
+    return res.status(400).send("Key must be a 4-digit number.");
+  }
+  if (reqKey !== storedKey) {
+    return res.status(403).send("Invalid key. Please check your 4-digit code.");
   }
 
   res.download(file.path, file.name);
