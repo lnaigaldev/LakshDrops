@@ -37,12 +37,13 @@ th, td {
 
 <div class="login" id="login">
   <h2>🔐 Admin Login</h2>
-  <input id="adminKey" type="password" placeholder="Admin key">
+  <input id="adminEmail" type="email" placeholder="Admin email">
   <button onclick="login()">Login</button>
 </div>
 
 <div class="panel" id="panel" style="display:none">
   <h2>⚙️ Admin Dashboard</h2>
+  <span id="admin-greeting"></span>
   <button class="danger" onclick="logout()">Logout</button>
 
   <table>
@@ -59,27 +60,28 @@ th, td {
 </div>
 
 <script>
-let ADMIN_KEY = "";
+let ADMIN_EMAIL = "";
 let files = [];
 
 function login() {
-  ADMIN_KEY = document.getElementById("adminKey").value;
-  if (!ADMIN_KEY) return alert("Admin key required");
-  sessionStorage.setItem("ADMIN_KEY", ADMIN_KEY);
+  ADMIN_EMAIL = document.getElementById("adminEmail").value.trim();
+  if (!ADMIN_EMAIL) return alert("Admin email required");
+  sessionStorage.setItem("ADMIN_EMAIL", ADMIN_EMAIL);
   load();
 }
 
 function logout() {
-  sessionStorage.removeItem("ADMIN_KEY");
+  sessionStorage.removeItem("ADMIN_EMAIL");
   location.reload();
 }
 
 async function load() {
-  ADMIN_KEY = sessionStorage.getItem("ADMIN_KEY");
-  if (!ADMIN_KEY) return;
+  ADMIN_EMAIL = sessionStorage.getItem("ADMIN_EMAIL");
+  if (!ADMIN_EMAIL) return;
 
   document.getElementById("login").style.display = "none";
   document.getElementById("panel").style.display = "block";
+  document.getElementById("admin-greeting").innerText = `Logged in as: ${ADMIN_EMAIL}`;
 
   const res = await fetch("/files");
   files = await res.json();
@@ -107,10 +109,16 @@ function render() {
 
 async function download(id, name) {
   const res = await fetch("/admin/download/" + id, {
-    headers: { "admin-key": ADMIN_KEY }
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email: ADMIN_EMAIL })
   });
 
-  if (!res.ok) return alert("Download failed");
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    alert(err.error || "Download failed");
+    return;
+  }
 
   const blob = await res.blob();
   const a = document.createElement("a");
@@ -124,10 +132,15 @@ async function del(id) {
 
   const res = await fetch("/admin/delete/" + id, {
     method: "POST",
-    headers: { "admin-key": ADMIN_KEY }
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email: ADMIN_EMAIL })
   });
 
-  if (!res.ok) return alert("Delete failed");
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    alert(err.error || "Delete failed");
+    return;
+  }
 
   files = files.filter(f => f.id !== id);
   render();
