@@ -7,6 +7,8 @@ const fs = require("fs");
 const app = express();
 const PORT = 3000;
 const OWNER_EMAIL = "lnaigaldev@gmail.com";
+// Owner/admin password: set via env `ADMIN_PASSWORD` or default to 'adminpass'.
+const OWNER_PASSWORD = process.env.ADMIN_PASSWORD || "adminpass";
 const FILES_JSON = path.join(__dirname, "files.json");
 
 app.use(express.json());
@@ -57,10 +59,11 @@ app.post("/upload", upload.single("file"), (req, res) => {
   if (!req.file) {
     return res.status(400).json({ error: "No file uploaded." });
   }
-  if (!uploader || !description || !key) {
-    return res.status(400).json({ error: "Missing uploader, description, or key." });
+  // Make uploader/description optional; only `key` is required and must be 4 digits.
+  const keyStr = String(key || "").trim();
+  if (!keyStr) {
+    return res.status(400).json({ error: "Missing key." });
   }
-  const keyStr = String(key).trim();
   if (!/^[0-9]{4}$/.test(keyStr)) {
     return res.status(400).json({ error: "Key must be a 4-digit number." });
   }
@@ -69,8 +72,8 @@ app.post("/upload", upload.single("file"), (req, res) => {
     id: uuid(),
     name: req.file.originalname,
     path: req.file.path,
-    uploader,
-    description,
+    uploader: (uploader || "").toString().trim(),
+    description: (description || "").toString().trim(),
     key: keyStr,
   };
 
@@ -161,6 +164,34 @@ app.post("/admin/delete/:id", (req, res) => {
   files.splice(index, 1);
   saveFiles();
   res.json({ success: true });
+});
+
+// --------- Admin Login Check ---------
+app.post("/admin/login", (req, res) => {
+  const input = String((req.body && req.body.email) || "").trim();
+  const password = String((req.body && req.body.password) || "");
+  if (!input) return res.status(400).json({ error: "Email required." });
+
+  const q = input.toLowerCase();
+  // Match either full email or local-part (before @). Case-insensitive.
+  const matched = adminEmails.find((e) => {
+    if (!e || typeof e !== 'string') return false;
+    const lower = e.toLowerCase();
+    if (lower === q) return true;
+    const local = lower.split('@')[0];
+    return local === q;
+  });
+
+  if (matched) {
+    // If matched admin is the owner, require password check
+    if (matched.toLowerCase() === OWNER_EMAIL.toLowerCase()) {
+      if (!password) return res.status(400).json({ error: "Password required for owner login." });
+      if (password !== OWNER_PASSWORD) return res.status(403).json({ error: "Invalid password." });
+    }
+    return res.json({ success: true, isAdmin: true, matchedEmail: matched, admins: adminEmails });
+  }
+
+  return res.json({ success: true, isAdmin: false });
 });
 
 // --------- Start Server ---------
